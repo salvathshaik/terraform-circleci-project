@@ -2,17 +2,17 @@ version: 2
 
 jobs:
   plan-apply:
-    working_directory: /tmp/project
-    docker:
+    working_directory: /tmp/project #this is the directory where our code wiil be cloned
+    docker: #Executor to run our job. it's like agent/VM in jenkins
       - image: docker.mirror.hashicorp.services/hashicorp/terraform:light
     steps:
-      - checkout
+      - checkout #this will help us to clone the code to above directory
       - run:
           name: terraform init & plan
-          command: |
+          command: | #pipe command is indicates that we are running multiple shell commands below
             terraform init -input=false
-            terraform plan -out tfapply -var-file terraform.tfvars
-      - persist_to_workspace:
+            terraform plan -out tfapply -var-file terraform.tfvars #saving the plan into tfapply file and passing the variable file
+      - persist_to_workspace: #saving the terraform state and cache the checkout code in the root directory so that it will use in further jobs for quick as cache
           root: .
           paths:
             - .
@@ -21,12 +21,12 @@ jobs:
     docker:
       - image: docker.mirror.hashicorp.services/hashicorp/terraform:light
     steps:
-      - attach_workspace:
+      - attach_workspace: #bringing the above saved terraform plan state to this job(apply)
           at: .
       - run:
           name: terraform
           command: |
-            terraform apply -auto-approve tfapply
+            terraform apply -auto-approve tfapply #auto approving to avoid the CLI confirmation and using the above saved terraform plan state file tfapply
       - persist_to_workspace:
           root: .
           paths:
@@ -40,8 +40,8 @@ jobs:
           at: .
       - run:
           name: terraform create destroy plan
-          command: |
-            terraform plan -destroy -out tfdestroy -var-file terraform.tfvars
+          command: | #the below is a terraform destroy planning before applying below for review
+            terraform plan -destroy -out tfdestroy -var-file terraform.tfvars #saving the destroy state to tfdestroy file and passing the variable file
       - persist_to_workspace:
           root: .
           paths:
@@ -56,15 +56,15 @@ jobs:
       - run:
           name: terraform destroy
           command: |
-            terraform apply -auto-approve tfdestroy
+            terraform apply -auto-approve tfdestroy #applying destroy with auto approve using tfdestroy terraform state file
 workflows:
   version: 2
-  plan_approve_apply:
-    jobs:
-      - plan-apply
-      - hold-apply:
-          type: approval
-          requires:
+  plan_approve_apply_workflow: #workflow name
+    jobs: #execution order defines below
+      - plan-apply #first execute this job
+      - hold-apply: #this will hold the pipeline and need to approve in circleCI UI and it trigger only plan-apply job completes as below
+          type: approval #this approval steps useful to review the changes and then approve
+          requires: #this is the thing wait for below job to complete the execution and start later
             - plan-apply
       - apply:
           requires:
