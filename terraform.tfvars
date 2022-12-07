@@ -1,3 +1,3 @@
 region = "us-east-1"
-label  = "terraform-circleci"
+label  = "tf-circleci"
 app    = "terramino"
